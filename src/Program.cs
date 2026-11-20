@@ -8,7 +8,7 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows.Forms;
 
-[assembly: System.Reflection.AssemblyVersion("1.1.0.0")]
+[assembly: System.Reflection.AssemblyVersion("1.2.0.0")]
 [assembly: System.Reflection.AssemblyTitle("LumPanel")]
 
 namespace LumPanel
@@ -33,6 +33,29 @@ namespace LumPanel
                 }
                 catch (Exception ex) { result = "HATA: " + ex.Message; }
                 File.WriteAllText(aiTest, result, System.Text.Encoding.UTF8);
+                return 0;
+            }
+            string optTest = ArgValue(args, "--opt-test");
+            if (optTest != null)
+            {
+                var files = new ServerFiles(optTest);
+                int ok = 0, miss = 0;
+                foreach (var g in Optimizer.Generate(30, 0, 0, 8).GroupBy(t => t.File))
+                {
+                    if (!files.Exists(g.Key)) { miss += g.Count(); continue; }
+                    string text = files.Read(g.Key);
+                    if (g.Key == "server.properties")
+                    {
+                        var present = new HashSet<string>(ServerFiles.ParseProperties(text).Select(k => k.Key));
+                        text = ServerFiles.SetProperties(text, g.Where(t => present.Contains(t.Key)).ToDictionary(t => t.Key, t => t.Value));
+                        ok += g.Count(t => present.Contains(t.Key)); miss += g.Count(t => !present.Contains(t.Key));
+                    }
+                    else foreach (var t in g) { if (ServerFiles.SetYaml(ref text, t.Key, t.Value)) ok++; else miss++; }
+                    files.Write(g.Key, text);
+                }
+                File.WriteAllText(Path.Combine(optTest, "opt-result.txt"), $"ok={ok} miss={miss}");
+                try { files.Resolve(@"..\..\Windows"); File.AppendAllText(Path.Combine(optTest, "opt-result.txt"), " ESCAPE!"); }
+                catch (InvalidOperationException) { File.AppendAllText(Path.Combine(optTest, "opt-result.txt"), " escape-blocked"); }
                 return 0;
             }
             string updTest = ArgValue(args, "--update-check");

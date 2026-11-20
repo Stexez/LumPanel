@@ -4,3 +4,5 @@ dist/yedekler/
 dist/*.bozuk-*
 *.part
 LumPanel-VDS.zip
+test/srv/.lumpanel-yedek/
+test/srv/opt-result.txt

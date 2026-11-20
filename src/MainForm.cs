@@ -52,6 +52,7 @@ namespace LumPanel
             AddPage("◉", "Genel Bakış", Dashboard);
             AddPage("▤", "Konsollar", Consoles);
             AddPage("☺", "Oyuncular", Players);
+            AddPage("⚒", "Sunucu Ayarları", new ServerConfigPage(manager, this));
             AddPage("✦", "Yapay Zeka", new AiPage(manager, this));
             AddPage("⏱", "Zamanlayıcı", new SchedulePage(manager, this));
             AddPage("⛁", "Yedekler", new BackupsPage(manager, this));

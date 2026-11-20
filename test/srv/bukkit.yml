@@ -1,0 +1,6 @@
+spawn-limits:
+  monsters: 35
+  animals: 6
+ticks-per:
+  animal-spawns: 400
+  monster-spawns: 4

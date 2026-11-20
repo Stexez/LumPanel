@@ -1,0 +1,6 @@
+environment:
+  optimize-explosions: true
+misc:
+  redstone-implementation: ALTERNATE_CURRENT
+chunks:
+  max-auto-save-chunks-per-tick: 6

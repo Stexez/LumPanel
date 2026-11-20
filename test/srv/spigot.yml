@@ -1,0 +1,13 @@
+settings:
+  debug: false
+world-settings:
+  default:
+    merge-radius:
+      item: 4
+      exp: 6
+    mob-spawn-range: 3
+    entity-activation-range:
+      animals: 12
+      monsters: 18 # yorum korunmali
+      misc: 6
+    nerf-spawner-mobs: true
