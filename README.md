@@ -41,6 +41,17 @@ En küçük model (Haiku) kullanılır, düşük efor, kısa yanıt; günlük is
 
 İstersen Ayarlar'dan **API anahtarı** bağlantısına geçebilirsin (kullanım başına ücretli; anahtar Windows şifrelemesiyle saklanır).
 
+## Otomatik güncelleme
+
+Panel 6 saatte bir (ve açıldıktan 1 dk sonra) GitHub'daki son sürüme bakar (Ayarlar → Güncelleme, varsayılan depo `Stexez/LumPanel`). Yeni sürüm varsa sol menüde yeşil "güncelle" butonu çıkar; "otomatik kur" açıksa sunucularda oyuncu yokken kendisi kurar. Kurulum: servisler düzgünce kapatılır, exe değiştirilir (eskisi `LumPanel.exe.old` olarak kalır), panel yeniden açılır ve servisleri başlatır. `lumpanel.json`, loglar ve yedekler korunur.
+
+**Yeni sürüm yayınlamak:**
+1. `src/Program.cs` içindeki `AssemblyVersion` değerini artır (ör. `1.1.0.0` → `1.2.0.0`) ve `build.ps1` çalıştır.
+2. GitHub'da depoda **Releases → Draft a new release**: etiket `v1.2.0`, açıklamaya değişiklikleri yaz.
+3. `dist\LumPanel.exe` ve `dist\LumPanel.exe.sha256` dosyalarını sürüme ekle → **Publish release**.
+
+Depo herkese açık olmalı (gizli depoda Ayarlar'a erişim anahtarı gerekir).
+
 ## Derleme
 
 `build.ps1` (bilgisayarda .NET SDK ve .NET Framework 4.8 referans paketleri olmalı) → `dist\LumPanel.exe`.

@@ -41,6 +41,8 @@ namespace LumPanel
         readonly NumericUpDown maxLines = Num(500, 50000);
         readonly NumericUpDown aiLimit = Num(0, 1000);
         readonly ComboBox aiBackend = Theme.Combo();
+        readonly TextBox updateRepo = Theme.TextBox();
+        readonly CheckBox autoUpdate = Theme.Check("Yeni sürümü otomatik kur (sunucularda oyuncu yokken)");
 
         List<ServiceConfig> draft = new List<ServiceConfig>();
         ServiceConfig current;
@@ -125,6 +127,14 @@ namespace LumPanel
                 MessageBox.Show(Main, "Anahtar silindi. Paneli yeniden açınca Yapay Zeka sayfası yeni anahtar ister.", "Ayarlar");
             };
             flow.Controls.Add(forgetKey);
+            updateRepo.Width = 260;
+            var checkNow = DarkButton.Sized("Güncellemeleri şimdi kontrol et", 250, Theme.Accent);
+            checkNow.Margin = new Padding(0, 22, 0, 0);
+            checkNow.Click += (s, e) => Main.CheckForUpdate(manual: true);
+            flow.Controls.Add(new Panel { Height = 1, Width = 620, BackColor = Theme.Border, Margin = new Padding(0, 18, 0, 10) });
+            flow.Controls.Add(Theme.Label($"Güncelleme · şu anki sürüm {Updater.CurrentText}", Theme.H2));
+            flow.Controls.Add(Pair(Field("GitHub deposu (kullanıcı/depo)", updateRepo), checkNow));
+            flow.Controls.Add(autoUpdate);
 
             var saveBar = new FlowLayoutPanel { AutoSize = true, BackColor = Theme.Card, Margin = new Padding(0, 16, 0, 0) };
             var save = DarkButton.Sized("💾 Kaydet", 130, Theme.Accent);
@@ -225,6 +235,8 @@ namespace LumPanel
             maxLines.Value = Math.Max(500, Math.Min(50000, cfg.ConsoleMaxLines));
             aiLimit.Value = Math.Max(0, Math.Min(1000, cfg.AiDailyLimit));
             aiBackend.SelectedIndex = cfg.AiBackend == "api" ? 1 : 0;
+            updateRepo.Text = cfg.UpdateRepo;
+            autoUpdate.Checked = cfg.AutoUpdate;
             FillList(draft.FirstOrDefault());
         }
 
@@ -375,6 +387,9 @@ namespace LumPanel
                 AiDailyLimit = (int)aiLimit.Value,
                 AiBackend = aiBackend.SelectedIndex == 1 ? "api" : "claude-code",
                 AiClaudePath = Manager.Config.AiClaudePath,
+                UpdateRepo = updateRepo.Text.Trim(),
+                UpdateToken = Manager.Config.UpdateToken,
+                AutoUpdate = autoUpdate.Checked,
             };
             try { MainForm.SetStartWithWindows(cfg.StartWithWindows); }
             catch (Exception ex) { MessageBox.Show(Main, "Windows başlangıcına eklenemedi: " + ex.Message, "Ayarlar"); }

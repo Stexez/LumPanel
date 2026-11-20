@@ -8,6 +8,9 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows.Forms;
 
+[assembly: System.Reflection.AssemblyVersion("1.1.0.0")]
+[assembly: System.Reflection.AssemblyTitle("LumPanel")]
+
 namespace LumPanel
 {
     static class Program
@@ -30,6 +33,18 @@ namespace LumPanel
                 }
                 catch (Exception ex) { result = "HATA: " + ex.Message; }
                 File.WriteAllText(aiTest, result, System.Text.Encoding.UTF8);
+                return 0;
+            }
+            string updTest = ArgValue(args, "--update-check");
+            if (updTest != null)
+            {
+                var lines = new List<string>();
+                foreach (var repo in new[] { "Stexez/LumPanel-yok-boyle-depo", "PaperMC/Velocity" })
+                {
+                    try { var r = Updater.Check(repo, null); lines.Add(repo + ": " + (r == null ? "guncel" : r.Tag)); }
+                    catch (Exception ex) { lines.Add(repo + ": " + ex.Message); }
+                }
+                File.WriteAllLines(updTest, lines);
                 return 0;
             }
             string ccTest = ArgValue(args, "--ai-test-cc");
@@ -75,7 +90,7 @@ namespace LumPanel
             var config = AppConfig.Load(configPath);
             if (configPath == null && !File.Exists(AppConfig.PathOf)) { try { config.Save(); } catch { } }
             using var manager = new ServiceManager(config);
-            manager.AddEvent("Panel", "LumPanel açıldı.");
+            manager.AddEvent("Panel", args.Contains("--after-update") ? $"LumPanel {Updater.CurrentText} sürümüne güncellendi." : $"LumPanel {Updater.CurrentText} açıldı.");
             var form = new MainForm(manager);
 
             if (shotDir != null) return Screenshots(form, manager, shotDir, args);

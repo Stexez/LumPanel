@@ -115,6 +115,11 @@ namespace LumPanel
         /// <summary>"claude-code" = the user's own Claude plan through the Claude Code CLI (no extra cost); "api" = paid API key.</summary>
         public string AiBackend { get; set; } = "claude-code";
         public string AiClaudePath { get; set; } = "";
+        public string UpdateRepo { get; set; } = "Stexez/LumPanel";
+        /// <summary>Only needed when the GitHub repository is private.</summary>
+        public string UpdateToken { get; set; } = "";
+        /// <summary>Install new releases automatically when no player is online.</summary>
+        public bool AutoUpdate { get; set; } = true;
         public bool AiAutoExplain { get; set; } = true;
         public int AiDailyLimit { get; set; } = 40;
 

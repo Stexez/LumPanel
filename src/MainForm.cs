@@ -22,6 +22,10 @@ namespace LumPanel
         readonly NotifyIcon tray = new NotifyIcon();
         readonly Timer uiTimer = new Timer { Interval = 1000 };
         Page current;
+        Updater.Release pendingUpdate;
+        bool updating;
+        readonly DarkButton updateBanner = new DarkButton("", Theme.Green) { Dock = DockStyle.Bottom, Height = 40, Visible = false };
+        readonly Timer updateTimer = new Timer { Interval = 60_000 };
         bool reallyExit;
 
         public DashboardPage Dashboard { get; }
@@ -59,6 +63,10 @@ namespace LumPanel
             Controls.Add(statusBar);
 
             BuildTray();
+            sidebar.Controls.Add(updateBanner);
+            updateBanner.Click += (s, e) => InstallUpdate(manual: true);
+            updateTimer.Tick += (s, e) => { updateTimer.Interval = 6 * 3600_000; CheckForUpdate(manual: false); };
+            updateTimer.Start();
             uiTimer.Tick += (s, e) => Tick();
             uiTimer.Start();
             ShowPage(pages[0].page);
@@ -139,6 +147,67 @@ namespace LumPanel
             int up = Manager.Runners.Count(r => r.State == ServiceState.Running);
             statusBar.Text = $"  CPU %{s.CpuPercent:0}    RAM {s.MemUsedGb:0.0} / {s.MemTotalGb:0.0} GB    Disk {s.DiskName} {s.DiskFreeGb:0} GB boş    ·    {up}/{Manager.Runners.Count} servis açık    ·    {DateTime.Now:HH:mm:ss}";
             tray.Text = $"LumPanel · {up}/{Manager.Runners.Count} servis açık";
+        }
+
+        public void CheckForUpdate(bool manual)
+        {
+            var cfg = Manager.Config;
+            System.Threading.ThreadPool.QueueUserWorkItem(_ =>
+            {
+                Updater.Release rel = null;
+                string error = null;
+                try { rel = Updater.Check(cfg.UpdateRepo, cfg.UpdateToken); }
+                catch (Exception ex) { error = ex.Message; }
+                BeginInvoke(new Action(() =>
+                {
+                    if (error != null) { if (manual) MessageBox.Show(this, "Güncelleme kontrol edilemedi:\n" + error, "Güncelleme"); return; }
+                    if (rel == null) { if (manual) MessageBox.Show(this, $"En güncel sürümü kullanıyorsun ({Updater.CurrentText}).", "Güncelleme"); return; }
+                    pendingUpdate = rel;
+                    updateBanner.Text = $"⬆  {rel.Tag} hazır — güncelle";
+                    updateBanner.Visible = true;
+                    tray.ShowBalloonTip(5000, "LumPanel güncellemesi", $"{rel.Tag} yayınlandı.", ToolTipIcon.Info);
+                    bool nobodyOnline = Manager.Runners.All(r => r.Players.Length == 0);
+                    if (manual) InstallUpdate(manual: true);
+                    else if (cfg.AutoUpdate && nobodyOnline) InstallUpdate(manual: false);
+                }));
+            });
+        }
+
+        /// <summary>Download, stop services cleanly, swap the exe and restart; settings files stay as they are.</summary>
+        public void InstallUpdate(bool manual)
+        {
+            var rel = pendingUpdate;
+            if (rel == null || updating) return;
+            if (manual && MessageBox.Show(this,
+                    $"{Updater.CurrentText} → {rel.Tag}\n\n{(rel.Notes.Length > 600 ? rel.Notes.Substring(0, 600) + "…" : rel.Notes)}\n\n" +
+                    "Servisler düzgünce kapatılıp güncelleme kurulacak, panel yeniden açılınca servisler tekrar başlayacak. Devam edilsin mi?",
+                    "Güncelleme", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
+            updating = true;
+            updateBanner.Text = "İndiriliyor...";
+            var cfg = Manager.Config;
+            System.Threading.ThreadPool.QueueUserWorkItem(_ =>
+            {
+                try
+                {
+                    string file = Updater.Download(rel, cfg.UpdateToken);
+                    Manager.AddEvent("Panel", $"{rel.Tag} indirildi; servisler kapatılıp güncelleniyor.", true);
+                    foreach (var r in Manager.Runners.Where(r => r.Config.Kind == ServiceKinds.Minecraft && r.State == ServiceState.Running))
+                        r.Send("say Panel güncelleniyor, sunucu birazdan yeniden başlayacak.");
+                    Manager.StopAll(wait: true);
+                    Updater.ScheduleSwap(file);
+                    BeginInvoke(new Action(() => { reallyExit = true; tray.Visible = false; Close(); }));
+                }
+                catch (Exception ex)
+                {
+                    BeginInvoke(new Action(() =>
+                    {
+                        updating = false;
+                        updateBanner.Text = $"⬆  {rel.Tag} hazır — güncelle";
+                        Manager.AddEvent("Panel", "Güncelleme başarısız: " + ex.Message, true);
+                        if (manual) MessageBox.Show(this, "Güncelleme başarısız:\n" + ex.Message, "Güncelleme");
+                    }));
+                }
+            });
         }
 
         void BuildTray()

@@ -12,4 +12,5 @@ $src = Get-ChildItem (Join-Path $root 'src') -Filter *.cs | ForEach-Object { $_.
 & dotnet $csc -nologo -noconfig -nostdlib+ -target:winexe -langversion:latest -optimize+ -platform:anycpu -utf8output `
     "-win32icon:$root\app.ico" "-win32manifest:$root\app.manifest" "-out:$out" @refs @src
 if ($LASTEXITCODE -ne 0) { throw "Derleme başarısız" }
+(Get-FileHash $out -Algorithm SHA256).Hash.ToLower() + "  LumPanel.exe" | Set-Content -Encoding ascii "$out.sha256"
 Write-Host "OK -> $out ($([int]((Get-Item $out).Length / 1KB)) KB)"
