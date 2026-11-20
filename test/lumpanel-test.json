@@ -1,0 +1,103 @@
+{
+  "Services": [
+    {
+      "Id": "lumsmp",
+      "Name": "LumSMP",
+      "Kind": "minecraft",
+      "WorkingDir": "C:\\Users\\doruk\\OneDrive\\Masaüstü\\Desktop\\LumPanel\\test",
+      "Program": "C:\\Program Files (x86)\\Python315-32\\python.exe",
+      "Arguments": "fake_server.py paper",
+      "StopCommand": "",
+      "StopTimeoutSec": 15,
+      "AutoStart": true,
+      "AutoRestart": true,
+      "StartDelaySec": 1,
+      "Encoding": "utf-8",
+      "Priority": "Normal",
+      "MatchText": "",
+      "Featured": true,
+      "QuickCommands": []
+    },
+    {
+      "Id": "lumcraft",
+      "Name": "LumCraft",
+      "Kind": "minecraft",
+      "WorkingDir": "C:\\Users\\doruk\\OneDrive\\Masaüstü\\Desktop\\LumPanel\\test",
+      "Program": "C:\\Program Files (x86)\\Python315-32\\python.exe",
+      "Arguments": "fake_server.py paper",
+      "StopCommand": "",
+      "StopTimeoutSec": 15,
+      "AutoStart": true,
+      "AutoRestart": true,
+      "StartDelaySec": 1,
+      "Encoding": "utf-8",
+      "Priority": "Normal",
+      "MatchText": "",
+      "Featured": false,
+      "QuickCommands": []
+    },
+    {
+      "Id": "velocity",
+      "Name": "Velocity (proxy)",
+      "Kind": "proxy",
+      "WorkingDir": "C:\\Users\\doruk\\OneDrive\\Masaüstü\\Desktop\\LumPanel\\test",
+      "Program": "C:\\Program Files (x86)\\Python315-32\\python.exe",
+      "Arguments": "fake_server.py velocity",
+      "StopCommand": "",
+      "StopTimeoutSec": 15,
+      "AutoStart": true,
+      "AutoRestart": true,
+      "StartDelaySec": 1,
+      "Encoding": "utf-8",
+      "Priority": "Normal",
+      "MatchText": "",
+      "Featured": false,
+      "QuickCommands": []
+    },
+    {
+      "Id": "crashy",
+      "Name": "Çöken test",
+      "Kind": "other",
+      "WorkingDir": "C:\\Users\\doruk\\OneDrive\\Masaüstü\\Desktop\\LumPanel\\test",
+      "Program": "C:\\Program Files (x86)\\Python315-32\\python.exe",
+      "Arguments": "fake_server.py paper 4",
+      "StopCommand": "",
+      "StopTimeoutSec": 15,
+      "AutoStart": true,
+      "AutoRestart": true,
+      "StartDelaySec": 1,
+      "Encoding": "utf-8",
+      "Priority": "Normal",
+      "MatchText": "",
+      "Featured": false,
+      "QuickCommands": []
+    }
+  ],
+  "Schedules": [
+    {
+      "Id": "s1",
+      "ServiceId": "",
+      "Type": "restart",
+      "Time": "05:00",
+      "IntervalMin": 30,
+      "Command": "",
+      "Warn": true,
+      "Enabled": true
+    },
+    {
+      "Id": "s2",
+      "ServiceId": "lumsmp",
+      "Type": "interval",
+      "Time": "05:00",
+      "IntervalMin": 15,
+      "Command": "save-all",
+      "Warn": false,
+      "Enabled": true
+    }
+  ],
+  "DiscordWebhook": "",
+  "StartWithWindows": false,
+  "AutoStartServicesOnLaunch": false,
+  "MinimizeToTray": true,
+  "ConsoleMaxLines": 5000
+}

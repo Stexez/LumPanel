@@ -1,0 +1,6 @@
+dist/*.json
+dist/*.log
+dist/yedekler/
+dist/*.bozuk-*
+*.part
+LumPanel-VDS.zip
