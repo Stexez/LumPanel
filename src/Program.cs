@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
@@ -8,7 +8,7 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows.Forms;
 
-[assembly: System.Reflection.AssemblyVersion("1.2.0.0")]
+[assembly: System.Reflection.AssemblyVersion("1.3.0.0")]
 [assembly: System.Reflection.AssemblyTitle("LumPanel")]
 
 namespace LumPanel
@@ -117,6 +117,11 @@ namespace LumPanel
             var form = new MainForm(manager);
 
             if (shotDir != null) return Screenshots(form, manager, shotDir, args);
+
+            // local control port for the auto-updater (restarts go through the panel, not "crashes")
+            using var control = new ControlServer(manager);
+            try { control.Start(); }
+            catch (Exception ex) { manager.AddEvent("Panel", "Kontrol kapısı açılamadı: " + ex.Message); }
 
             if (autostart)
             {
