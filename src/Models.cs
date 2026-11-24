@@ -119,8 +119,8 @@ namespace LumPanel
         /// <summary>Only needed when the GitHub repository is private.</summary>
         public string UpdateToken { get; set; } = "";
         /// <summary>Install new releases automatically when no player is online.</summary>
-        public bool AutoUpdate { get; set; } = true;
-        public bool AiAutoExplain { get; set; } = true;
+        public bool AutoUpdate { get; set; } = false;
+        public bool AiAutoExplain { get; set; } = false;
         public int AiDailyLimit { get; set; } = 40;
 
         public static string Folder => AppDomain.CurrentDomain.BaseDirectory;

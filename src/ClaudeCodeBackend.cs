@@ -51,14 +51,20 @@ namespace LumPanel
         public static Result Ask(string exe, string model, string systemPrompt, string prompt, string resumeSession)
         {
             if (exe == null) throw new AiException("Claude Code bu bilgisayarda bulunamadı.\n" + InstallHint);
-            string work = Path.Combine(Path.GetTempPath(), "LumPanel-ai");   // empty folder: no project files, no CLAUDE.md
+            string safeModel = string.IsNullOrWhiteSpace(model) ? "haiku" : model.Trim();
+            if (!System.Text.RegularExpressions.Regex.IsMatch(safeModel, @"^[A-Za-z0-9._-]{1,64}$"))
+                throw new AiException("Geçersiz AI model adı.");
+            if (!string.IsNullOrEmpty(resumeSession) && !System.Text.RegularExpressions.Regex.IsMatch(resumeSession, @"^[A-Za-z0-9_-]{1,128}$"))
+                throw new AiException("Geçersiz oturum kimliği.");
+
+            string work = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "LumPanel", "ai-work");   // empty folder: no project files, no CLAUDE.md
             Directory.CreateDirectory(work);
             string sysFile = Path.Combine(work, "system.txt");
             File.WriteAllText(sysFile, systemPrompt, new UTF8Encoding(false));
 
             var args = new StringBuilder();
             args.Append("-p --output-format json --tools \"\" --strict-mcp-config --effort low");
-            args.Append(" --model ").Append(string.IsNullOrWhiteSpace(model) ? "haiku" : model);
+            args.Append(" --model ").Append(safeModel);
             args.Append(" --system-prompt-file \"").Append(sysFile).Append('"');
             if (!string.IsNullOrEmpty(resumeSession)) args.Append(" --resume ").Append(resumeSession);
 

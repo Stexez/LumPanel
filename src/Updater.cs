@@ -70,9 +70,24 @@ namespace LumPanel
             };
         }
 
+        static bool IsAllowedReleaseUrl(string url)
+        {
+            if (string.IsNullOrWhiteSpace(url) || !Uri.TryCreate(url, UriKind.Absolute, out var uri)) return false;
+            if (!string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)) return false;
+            string host = uri.Host.ToLowerInvariant();
+            return host == "github.com"
+                || host == "api.github.com"
+                || host.EndsWith(".githubusercontent.com", StringComparison.Ordinal);
+        }
+
         /// <summary>Downloads next to the running exe as LumPanel.exe.new and checks it.</summary>
         public static string Download(Release r, string token)
         {
+            if (!IsAllowedReleaseUrl(r.ExeUrl))
+                throw new InvalidOperationException("Güncelleme adresi geçersiz veya güvenilir değil.");
+            if (string.IsNullOrWhiteSpace(r.ShaUrl) || !IsAllowedReleaseUrl(r.ShaUrl))
+                throw new InvalidOperationException("Bu sürümde zorunlu SHA-256 doğrulama dosyası (LumPanel.exe.sha256) bulunmuyor; güncelleme iptal edildi.");
+
             string target = Application.ExecutablePath + ".new";
             using (var wc = Client(token))
             {
@@ -84,17 +99,19 @@ namespace LumPanel
                     File.Delete(target);
                     throw new InvalidOperationException("İndirilen dosya geçerli bir program değil.");
                 }
-                if (r.ShaUrl != null)
+                wc.Headers[HttpRequestHeader.Accept] = "application/octet-stream";
+                string expected = wc.DownloadString(r.ShaUrl).Trim().Split(' ', '\t', '\r', '\n')[0].ToLowerInvariant();
+                if (!System.Text.RegularExpressions.Regex.IsMatch(expected, "^[0-9a-f]{64}$"))
                 {
-                    wc.Headers[HttpRequestHeader.Accept] = "application/octet-stream";
-                    string expected = wc.DownloadString(r.ShaUrl).Trim().Split(' ', '\t')[0].ToLowerInvariant();
-                    using var sha = SHA256.Create();
-                    string actual = BitConverter.ToString(sha.ComputeHash(bytes)).Replace("-", "").ToLowerInvariant();
-                    if (expected.Length == 64 && expected != actual)
-                    {
-                        File.Delete(target);
-                        throw new InvalidOperationException("İndirilen dosyanın SHA-256 özeti tutmuyor; güncelleme iptal edildi.");
-                    }
+                    File.Delete(target);
+                    throw new InvalidOperationException("SHA-256 doğrulama dosyası geçersiz biçimde; güncelleme iptal edildi.");
+                }
+                using var sha = SHA256.Create();
+                string actual = BitConverter.ToString(sha.ComputeHash(bytes)).Replace("-", "").ToLowerInvariant();
+                if (!string.Equals(expected, actual, StringComparison.Ordinal))
+                {
+                    File.Delete(target);
+                    throw new InvalidOperationException("İndirilen dosyanın SHA-256 özeti tutmuyor; güncelleme iptal edildi.");
                 }
             }
             return target;
@@ -105,7 +122,8 @@ namespace LumPanel
         {
             string exe = Application.ExecutablePath;
             int pid = Process.GetCurrentProcess().Id;
-            string script = Path.Combine(Path.GetTempPath(), "lumpanel-guncelle.cmd");
+            Directory.CreateDirectory(ControlServer.Folder);
+            string script = Path.Combine(ControlServer.Folder, $"lumpanel-guncelle-{Guid.NewGuid():N}.cmd");
             File.WriteAllText(script,
                 "@echo off\r\n" +
                 ":wait\r\n" +
