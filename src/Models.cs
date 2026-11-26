@@ -114,6 +114,11 @@ namespace LumPanel
         public string AiModel { get; set; } = "claude-haiku-5-5";
         /// <summary>"claude-code" = the user's own Claude plan through the Claude Code CLI (no extra cost); "api" = paid API key.</summary>
         public string AiBackend { get; set; } = "claude-code";
+        /// <summary>NVIDIA Build key (nvapi-...), DPAPI encrypted like the other key.</summary>
+        public string NvidiaKeyProtected { get; set; } = "";
+        public string NvidiaModel { get; set; } = NvidiaClient.DefaultModel;
+        /// <summary>The one-time switch to the NVIDIA backend has been done.</summary>
+        public bool AiNvidiaDefaulted { get; set; }
         public string AiClaudePath { get; set; } = "";
         public string UpdateRepo { get; set; } = "Stexez/LumPanel";
         /// <summary>Only needed when the GitHub repository is private.</summary>
@@ -139,6 +144,8 @@ namespace LumPanel
                 cfg.Services ??= new List<ServiceConfig>();
                 cfg.Schedules ??= new List<ScheduleConfig>();
                 foreach (var s in cfg.Services) s.QuickCommands ??= new List<string>();
+                // v1.4: the assistant moved to NVIDIA once; afterwards the choice in Settings is respected.
+                if (!cfg.AiNvidiaDefaulted) { cfg.AiBackend = "nvidia"; cfg.AiNvidiaDefaulted = true; }
                 return cfg;
             }
             catch (Exception ex)

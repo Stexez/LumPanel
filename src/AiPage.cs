@@ -34,7 +34,10 @@ namespace LumPanel
         readonly HashSet<ServiceRunner> hooked = new HashSet<ServiceRunner>();
         int autoToday;
         string sessionId;   // Claude Code conversation to resume
-        bool UseClaudeCode => Manager.Config.AiBackend != "api";
+        bool UseNvidia => Manager.Config.AiBackend == "nvidia";
+        bool UseClaudeCode => !UseNvidia && Manager.Config.AiBackend != "api";
+        string NvidiaKey => AiClient.Unprotect(Manager.Config.NvidiaKeyProtected);
+        readonly ComboBox modelBox = Theme.Combo();
         DateTime autoDay = DateTime.Today;
         bool busy;
 
@@ -92,6 +95,20 @@ namespace LumPanel
             var newChat = DarkButton.Sized("Yeni sohbet", 110);
             newChat.Margin = new Padding(16, 0, 0, 0);
             ctxRow.Controls.AddRange(new Control[] { withContext, contextService, newChat });
+            modelBox.Width = 320;
+            modelBox.Margin = new Padding(0);
+            modelBox.DropDownStyle = ComboBoxStyle.DropDown;  // any build.nvidia.com id can be typed
+            modelBox.Items.AddRange(NvidiaClient.Models);
+            modelBox.Text = string.IsNullOrWhiteSpace(m.Config.NvidiaModel) ? NvidiaClient.DefaultModel : m.Config.NvidiaModel;
+            modelBox.Visible = UseNvidia;
+            modelBox.TextChanged += (s, e) => { if (modelBox.Text.Trim().Length > 3) Manager.Config.NvidiaModel = modelBox.Text.Trim(); };
+            modelBox.Leave += (s, e) => SaveConfig();
+            modelBox.SelectionChangeCommitted += (s, e) => BeginInvoke(new Action(SaveConfig));
+            // its own row: next to the context controls it does not fit and gets cut off
+            var modelRow = new FlowLayoutPanel { Dock = DockStyle.Top, Height = 34, BackColor = Theme.Card, WrapContents = false, Visible = UseNvidia };
+            modelRow.Controls.Add(new Label { Text = "Model:", AutoSize = true, ForeColor = Theme.Muted, Margin = new Padding(0, 6, 8, 0) });
+            modelRow.Controls.Add(modelBox);
+            if (UseNvidia) composer.Height += modelRow.Height;
             input.Multiline = true;
             input.Dock = DockStyle.Fill;
             input.Font = new Font("Segoe UI", 10f);
@@ -103,6 +120,7 @@ namespace LumPanel
             inputRow.Controls.Add(send);
             composer.Controls.Add(inputRow);
             composer.Controls.Add(ctxRow);
+            composer.Controls.Add(modelRow);
             right.Controls.Add(chat);
             right.Controls.Add(composer);
             right.Controls.Add(BuildKeyCard());
@@ -114,7 +132,7 @@ namespace LumPanel
             Controls.Add(gap);
             Controls.Add(left);
             Controls.Add(Header("Yapay Zeka Asistanı",
-                (UseClaudeCode ? "Claude Code ile kendi planından çalışır (ek ücret yok). " : "API anahtarıyla çalışır (kullanım başına ücretli). ") +
+                (UseNvidia ? "NVIDIA ücretsiz katmanıyla çalışır (dakikalık istek sınırı var). " : UseClaudeCode ? "Claude Code ile kendi planından çalışır (ek ücret yok). " : "API anahtarıyla çalışır (kullanım başına ücretli). ") +
                 "Konsol hatalarını yakalar, nasıl düzeltileceğini anlatır; aşağıdan soru da sorabilirsin."));
 
             explain.Click += (s, e) => { if (errorList.SelectedItems.Count > 0) Explain((ErrorItem)errorList.SelectedItems[0].Tag, manual: true); };
@@ -135,14 +153,14 @@ namespace LumPanel
             keyBox.Width = 420;
             keyBox.UseSystemPasswordChar = true;
             var save = DarkButton.Sized("Anahtarı kaydet", 140, Theme.Accent);
-            var help = new LinkLabel { Text = "Anahtar al: console.anthropic.com → API Keys", AutoSize = true, LinkColor = Theme.Accent, BackColor = Color.Transparent, Location = new Point(18, 98) };
-            var title = new Label { Text = UseClaudeCode ? "Claude Code kurulu değil" : "Anthropic API anahtarı gerekli", Font = Theme.H2, ForeColor = Theme.Text, AutoSize = true, Location = new Point(16, 12), BackColor = Color.Transparent, Tag = "title" };
+            var help = new LinkLabel { Text = UseNvidia ? "Ücretsiz anahtar al: build.nvidia.com → API Keys" : "Anahtar al: console.anthropic.com → API Keys", AutoSize = true, LinkColor = Theme.Accent, BackColor = Color.Transparent, Location = new Point(18, 98) };
+            var title = new Label { Text = UseNvidia ? "NVIDIA API anahtarı gerekli" : UseClaudeCode ? "Claude Code kurulu değil" : "Anthropic API anahtarı gerekli", Font = Theme.H2, ForeColor = Theme.Text, AutoSize = true, Location = new Point(16, 12), BackColor = Color.Transparent, Tag = "title" };
             claudeHint.Text = ClaudeCodeBackend.InstallHint;
             claudeHint.Location = new Point(18, 42);
             keyCard.Controls.Add(claudeHint);
             var note = new Label
             {
-                Text = "Anahtar bu bilgisayarda Windows şifrelemesiyle saklanır. Model: en ucuz Claude (Haiku).",
+                Text = UseNvidia ? "Anahtar bu bilgisayarda Windows şifrelemesiyle saklanır (nvapi- ile başlar)." : "Anahtar bu bilgisayarda Windows şifrelemesiyle saklanır. Model: en ucuz Claude (Haiku).",
                 Font = Theme.Small, ForeColor = Theme.Muted, AutoSize = true, MaximumSize = new Size(560, 0), Location = new Point(18, 40), BackColor = Color.Transparent,
             };
             keyBox.Location = new Point(18, 64);
@@ -151,19 +169,27 @@ namespace LumPanel
             save.Click += (s, e) =>
             {
                 string key = keyBox.Text.Trim();
-                if (!key.StartsWith("sk-ant-")) { MessageBox.Show(Main, "Anahtar 'sk-ant-' ile başlamalı.", "Yapay Zeka"); return; }
-                Manager.Config.AiKeyProtected = AiClient.Protect(key);
+                string prefix = UseNvidia ? "nvapi-" : "sk-ant-";
+                if (!key.StartsWith(prefix)) { MessageBox.Show(Main, "Anahtar '" + prefix + "' ile başlamalı.", "Yapay Zeka"); return; }
+                if (UseNvidia) Manager.Config.NvidiaKeyProtected = AiClient.Protect(key);
+                else { Manager.Config.AiKeyProtected = AiClient.Protect(key); ai.SetKey(key); }
                 SaveConfig();
-                ai.SetKey(key);
                 keyBox.Clear();
                 UpdateKeyCard();
                 AddChat("Panel", "Anahtar kaydedildi. Artık hataları açıklayabilir ve sorularını yanıtlayabilirim.", Theme.Blue);
             };
-            help.LinkClicked += (s, e) => { try { Process.Start("https://console.anthropic.com/settings/keys"); } catch { } };
+            help.LinkClicked += (s, e) => { try { Process.Start(UseNvidia ? "https://build.nvidia.com/settings/api-keys" : "https://console.anthropic.com/settings/keys"); } catch { } };
             return keyCard;
         }
 
-        bool Ready => UseClaudeCode ? ClaudeCodeBackend.Find(Manager.Config.AiClaudePath) != null : ai.HasKey;
+        bool Ready => UseNvidia ? NvidiaKey.Length > 0 : UseClaudeCode ? ClaudeCodeBackend.Find(Manager.Config.AiClaudePath) != null : ai.HasKey;
+
+        string NotReadyText => UseClaudeCode ? ClaudeCodeBackend.InstallHint : "Önce API anahtarını gir.";
+
+        /// <summary>Base prompt plus a live snapshot of the services, so "why is X down?" can be answered.</summary>
+        string SystemWithStatus() =>
+            AiClient.SystemPrompt + "\n\nPaneldeki servislerin şu anki durumu (" + DateTime.Now.ToString("dd.MM.yyyy HH:mm") + "):\n" +
+            string.Join("\n", Manager.Runners.Select(r => "- " + r.Config.Name + " (" + ServiceKinds.Label(r.Config.Kind) + "): " + r.State));
 
         void UpdateKeyCard()
         {
@@ -241,7 +267,7 @@ namespace LumPanel
 
         void Explain(ErrorItem item, bool manual)
         {
-            if (!Ready) { MessageBox.Show(Main, UseClaudeCode ? ClaudeCodeBackend.InstallHint : "Önce API anahtarını gir.", "Yapay Zeka"); return; }
+            if (!Ready) { MessageBox.Show(Main, NotReadyText, "Yapay Zeka"); return; }
             if (!manual)
             {
                 if (autoDay != DateTime.Today) { autoDay = DateTime.Today; autoToday = 0; }
@@ -265,7 +291,7 @@ namespace LumPanel
         {
             string q = input.Text.Trim();
             if (q.Length == 0 || busy) return;
-            if (!Ready) { MessageBox.Show(Main, UseClaudeCode ? ClaudeCodeBackend.InstallHint : "Önce API anahtarını gir.", "Yapay Zeka"); return; }
+            if (!Ready) { MessageBox.Show(Main, NotReadyText, "Yapay Zeka"); return; }
             input.Clear();
             AddChat("Sen", q, Theme.Accent);
             string prompt = q;
@@ -291,13 +317,24 @@ namespace LumPanel
             TrimHistory();
             var snapshot = history.ToList();
             AddChat("Asistan", "yazıyor…", Theme.Muted);
+            bool nvidia = UseNvidia;
+            string nvidiaKey = nvidia ? NvidiaKey : "";
+            string nvidiaModel = Manager.Config.NvidiaModel;
+            string system = nvidia ? SystemWithStatus() : AiClient.SystemPrompt;
             ThreadPool.QueueUserWorkItem(_ =>
             {
                 AiReply reply = null;
                 string error = null;
                 try
                 {
-                    if (UseClaudeCode)
+                    if (nvidia)
+                    {
+                        var n = NvidiaClient.Ask(nvidiaKey, nvidiaModel, system, snapshot,
+                            partial => Main.BeginInvoke(new Action(() => ShowPartial(Clean(partial)))));
+                        ai.Record(n.InputTokens, n.OutputTokens);
+                        reply = new AiReply { Text = n.Text, Content = new List<object> { new Dictionary<string, object> { ["type"] = "text", ["text"] = n.Text } } };
+                    }
+                    else if (UseClaudeCode)
                     {
                         var r = ClaudeCodeBackend.Ask(ClaudeCodeBackend.Find(Manager.Config.AiClaudePath), "haiku", AiClient.SystemPrompt, prompt, sessionId);
                         sessionId = r.SessionId ?? sessionId;
@@ -353,6 +390,15 @@ namespace LumPanel
             chat.ScrollControlIntoView(bubble);
         }
 
+        /// <summary>Streams the answer into the "yazıyor…" bubble.</summary>
+        void ShowPartial(string text)
+        {
+            if (typing == null || typing.IsDisposed) return;
+            typing.Text = text;
+            typing.Fit(ChatWidth);
+            chat.ScrollControlIntoView(typing);
+        }
+
         void RemoveTyping()
         {
             if (typing == null) return;
@@ -370,6 +416,7 @@ namespace LumPanel
         void UpdateUsage()
         {
             usage.Text = !Ready ? (UseClaudeCode ? "Claude Code bulunamadı." : "API anahtarı girilmedi.")
+                : UseNvidia ? $"Bugün {ai.RequestsToday}/{Manager.Config.AiDailyLimit} istek · NVIDIA ücretsiz katman"
                 : UseClaudeCode ? $"Bugün {ai.RequestsToday}/{Manager.Config.AiDailyLimit} istek · {ai.InputTokensToday + ai.OutputTokensToday:N0} token · Claude planından (ek ücret yok)"
                 : $"Bugün {ai.RequestsToday}/{Manager.Config.AiDailyLimit} istek · {ai.InputTokensToday + ai.OutputTokensToday:N0} token · ≈ ${ai.CostToday:0.0000}";
         }

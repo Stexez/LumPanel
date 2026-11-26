@@ -30,9 +30,11 @@ Ayarlar `lumpanel.json`, olaylar `lumpanel-olaylar.log`, yedekler `yedekler\` kl
 
 Çöken servis otomatik yeniden başlatılır (10 dakikada 5'ten fazla çökerse durur ve uyarır). Discord webhook girilirse çökmeler Discord'a bildirilir. Pencere kapatılınca panel sağ alttaki simgeye küçülür; servisler çalışmaya devam eder.
 
-## Yapay zeka — ek ücret yok
+## Yapay zeka
 
-Varsayılan bağlantı **Claude Code**: panel, VDS'te kurulu Claude Code'u kullanır; kullanım **kendi Claude planından** düşer, API ücreti yoktur.
+Varsayılan bağlantı **NVIDIA Build** (ücretsiz katman, istek sınırı vardır; sınırsız değildir): build.nvidia.com → API Keys ile `nvapi-` anahtarı al ve panelin Yapay Zeka sayfasına yapıştır. Anahtar Windows şifrelemesiyle saklanır. Model o sayfadan seçilir. Sorular, eklenen konsol satırları (IP adresleri gizlenir) ve servis durumları NVIDIA'ya iletilir.
+
+Ayarlar'dan **Claude Code** bağlantısına geçebilirsin: panel, VDS'te kurulu Claude Code'u kullanır; kullanım **kendi Claude planından** düşer.
 
 1. VDS'te PowerShell: `irm https://claude.ai/install.ps1 | iex`
 2. Bir kez `claude` yazıp kendi hesabınla giriş yap.

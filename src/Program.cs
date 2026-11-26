@@ -8,7 +8,7 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows.Forms;
 
-[assembly: System.Reflection.AssemblyVersion("1.3.0.0")]
+[assembly: System.Reflection.AssemblyVersion("1.4.0.0")]
 [assembly: System.Reflection.AssemblyTitle("LumPanel")]
 
 namespace LumPanel

@@ -116,6 +116,7 @@ namespace LumPanel
             aiBackend.Width = 330;
             aiBackend.Items.Add("Claude Code · kendi Claude planım (ek ücret yok)");
             aiBackend.Items.Add("API anahtarı · kullanım başına ücretli");
+            aiBackend.Items.Add("NVIDIA · ücretsiz katman (nvapi anahtarı)");
             flow.Controls.Add(Field("Yapay zeka bağlantısı", aiBackend));
             flow.Controls.Add(Pair(Field("Konsolda tutulacak en fazla satır", maxLines), Field("Yapay zeka: günlük en fazla istek (0 = sınırsız)", aiLimit)));
             var forgetKey = DarkButton.Sized("Yapay zeka API anahtarını sil", 230);
@@ -123,6 +124,7 @@ namespace LumPanel
             forgetKey.Click += (s, e) =>
             {
                 Manager.Config.AiKeyProtected = "";
+                Manager.Config.NvidiaKeyProtected = "";
                 Manager.Config.Save();
                 MessageBox.Show(Main, "Anahtar silindi. Paneli yeniden açınca Yapay Zeka sayfası yeni anahtar ister.", "Ayarlar");
             };
@@ -234,7 +236,7 @@ namespace LumPanel
             toTray.Checked = cfg.MinimizeToTray;
             maxLines.Value = Math.Max(500, Math.Min(50000, cfg.ConsoleMaxLines));
             aiLimit.Value = Math.Max(0, Math.Min(1000, cfg.AiDailyLimit));
-            aiBackend.SelectedIndex = cfg.AiBackend == "api" ? 1 : 0;
+            aiBackend.SelectedIndex = cfg.AiBackend == "api" ? 1 : cfg.AiBackend == "nvidia" ? 2 : 0;
             updateRepo.Text = cfg.UpdateRepo;
             autoUpdate.Checked = cfg.AutoUpdate;
             FillList(draft.FirstOrDefault());
@@ -385,7 +387,10 @@ namespace LumPanel
                 AiModel = Manager.Config.AiModel,
                 AiAutoExplain = Manager.Config.AiAutoExplain,
                 AiDailyLimit = (int)aiLimit.Value,
-                AiBackend = aiBackend.SelectedIndex == 1 ? "api" : "claude-code",
+                AiBackend = aiBackend.SelectedIndex == 1 ? "api" : aiBackend.SelectedIndex == 2 ? "nvidia" : "claude-code",
+                NvidiaKeyProtected = Manager.Config.NvidiaKeyProtected,
+                NvidiaModel = Manager.Config.NvidiaModel,
+                AiNvidiaDefaulted = true,
                 AiClaudePath = Manager.Config.AiClaudePath,
                 UpdateRepo = updateRepo.Text.Trim(),
                 UpdateToken = Manager.Config.UpdateToken,
