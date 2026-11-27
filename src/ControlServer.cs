@@ -24,6 +24,7 @@ namespace LumPanel
     ///   GET  /durum                         all services
     ///   GET  /servis/{hedef}                one service ("site", "lumsmp", id or name)
     ///   POST /servis/{hedef}/yeniden-baslat?sebep=...   (also: durdur, baslat)
+    ///   POST /servis/{hedef}/komut?komut=...&sebep=...   console command (Minecraft / proxy only); returns new lines
     /// </summary>
     public sealed class ControlServer : IDisposable
     {
@@ -182,6 +183,12 @@ namespace LumPanel
                 var runner = Resolve(parts[1]);
                 if (runner == null) return (404, new { hata = $"'{parts[1]}' adlı servis panelde yok" });
                 if (parts.Length == 2 && method == "GET") return (200, Describe(runner));
+                if (parts.Length == 3 && method == "POST" && parts[2] == "komut")
+                {
+                    string command = query.Split('&').Where(p => p.StartsWith("komut="))
+                        .Select(p => Uri.UnescapeDataString(p.Substring(6))).FirstOrDefault();
+                    return RunCommand(runner, command, reason);
+                }
                 if (parts.Length == 3 && method == "POST")
                 {
                     switch (parts[2])
@@ -205,6 +212,34 @@ namespace LumPanel
                 }
             }
             return (404, new { hata = "bilinmeyen istek" });
+        }
+
+        /// <summary>A line typed into the panel console from outside. Stop/restart go through the panel's own
+        /// buttons, so they are not mistaken for a crash.</summary>
+        (int, object) RunCommand(ServiceRunner runner, string command, string reason)
+        {
+            command = (command ?? "").Trim().TrimStart('/').Trim();
+            if (runner.Config.Kind != ServiceKinds.Minecraft && runner.Config.Kind != ServiceKinds.Proxy)
+                return (400, new { hata = "bu servise konsol komutu gönderilemez" });
+            if (command.Length == 0 || command.Length > 500 || command.Any(char.IsControl))
+                return (400, new { hata = "geçersiz komut" });
+            if (!runner.IsOwned) return (400, new { hata = "sunucu panelde çalışmıyor" });
+
+            long before = runner.LinesAfter(0).LastOrDefault()?.Seq ?? 0;
+            manager.AddEvent(runner.Config.Name, $"komut: {command} ({reason})");
+            runner.AddPanelLine($"» {reason}:");
+            string verb = command.Split(' ')[0].ToLowerInvariant();
+            if (verb == "restart") runner.Stop(restart: true);
+            else if (verb == "stop" || verb == "end" || verb == "shutdown") runner.Stop();
+            else
+            {
+                string error = runner.Send(command);
+                if (error != null) return (400, new { hata = error });
+            }
+            Thread.Sleep(1500);
+            var output = runner.LinesAfter(before).Where(l => l.Level != LineLevel.Input && l.Level != LineLevel.Panel)
+                .Select(l => l.Text).Take(40).ToList();
+            return (200, new { durum = runner.State.ToString(), cikti = output });
         }
 
         public void Dispose()
